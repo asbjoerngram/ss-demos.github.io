@@ -1,32 +1,27 @@
 // ============================================================
 // Discrete-Time Convolution Demo
-// app.js
+// Fast version: create plots once, then update existing traces.
 // ============================================================
 
 
-// ------------------------------------------------------------
-// Discrete-time index
-// k = -20, -19, ..., 20
-// ------------------------------------------------------------
+// ============================================================
+// Indices
+// ============================================================
 
 const k = Array.from(
     { length: 41 },
     (_, i) => i - 20
 );
 
-
-// Convolution output indices:
-// (-20) + (-20) = -40
-// 20 + 20 = 40
 const yIndices = Array.from(
     { length: 81 },
     (_, i) => i - 40
 );
 
 
-// ------------------------------------------------------------
-// Get controls from the HTML
-// ------------------------------------------------------------
+// ============================================================
+// DOM elements
+// ============================================================
 
 const xMenu = document.getElementById("xSignal");
 const hMenu = document.getElementById("hSignal");
@@ -38,34 +33,53 @@ const plusButton = document.getElementById("plus");
 const nValue = document.getElementById("nValue");
 const equation = document.getElementById("equation");
 
+const overlapPlot = document.getElementById("overlapPlot");
+const productPlot = document.getElementById("productPlot");
+const outputPlot = document.getElementById("outputPlot");
 
-// ------------------------------------------------------------
+
+// ============================================================
+// Colors
+// ============================================================
+
+const BLUE = "#2563eb";
+const ORANGE = "#ea580c";
+const PURPLE = "#7c3aed";
+const GREEN = "#059669";
+const RED = "#dc2626";
+
+
+// ============================================================
 // Signal generator
-// ------------------------------------------------------------
+// ============================================================
 
 function signal(name) {
 
     switch (name) {
 
         case "Impulse":
+
             return k.map(i =>
                 i === 0 ? 1 : 0
             );
 
 
         case "Step":
+
             return k.map(i =>
                 i >= 0 && i <= 5 ? 1 : 0
             );
 
 
         case "Rectangle":
+
             return k.map(i =>
                 Math.abs(i) <= 2 ? 1 : 0
             );
 
 
         case "Exponential":
+
             return k.map(i =>
                 i >= 0 && i <= 10
                     ? Math.pow(0.7, i)
@@ -74,6 +88,7 @@ function signal(name) {
 
 
         case "Sine":
+
             return k.map(i =>
                 Math.abs(i) <= 5
                     ? Math.sin(0.7 * i)
@@ -82,14 +97,15 @@ function signal(name) {
 
 
         default:
+
             return new Array(k.length).fill(0);
     }
 }
 
 
-// ------------------------------------------------------------
-// Discrete convolution
-// ------------------------------------------------------------
+// ============================================================
+// Convolution
+// ============================================================
 
 function convolve(x, h) {
 
@@ -113,16 +129,9 @@ function convolve(x, h) {
 }
 
 
-// ------------------------------------------------------------
-// Evaluate h[n-k]
-//
-// h is stored for indices -20 ... 20.
-//
-// For every displayed k-value, we want:
-//
-//      h[n-k]
-//
-// ------------------------------------------------------------
+// ============================================================
+// Compute h[n-k]
+// ============================================================
 
 function shiftedSignal(h, n) {
 
@@ -130,16 +139,16 @@ function shiftedSignal(h, n) {
 
         const wantedIndex = n - currentK;
 
-        // Since h[-20] is stored at array position 0:
-        const arrayPosition = wantedIndex + 20;
+        // h[-20] is stored at position 0
+        const position = wantedIndex + 20;
 
 
         if (
-            arrayPosition >= 0 &&
-            arrayPosition < h.length
+            position >= 0 &&
+            position < h.length
         ) {
 
-            return h[arrayPosition];
+            return h[position];
 
         }
 
@@ -149,9 +158,9 @@ function shiftedSignal(h, n) {
 }
 
 
-// ------------------------------------------------------------
-// Utility
-// ------------------------------------------------------------
+// ============================================================
+// Helpers
+// ============================================================
 
 function maxAbs(values) {
 
@@ -162,56 +171,82 @@ function maxAbs(values) {
 
 
 // ------------------------------------------------------------
-// Build stem plot traces
+// x-coordinates used for vertical stem lines
 //
-// Plotly doesn't have MATLAB's stem() directly.
+// Example:
 //
-// We make:
-//   1. vertical lines
-//   2. markers
-//
-// Each vertical line is:
-//
-//      (k, 0)
-//      (k, value)
-//      null
-//
-// null separates it from the next stem.
+//   [-20, -20, null,
+//    -19, -19, null,
+//    ...]
 // ------------------------------------------------------------
 
-function makeStemTrace(
+function stemLineX(indices) {
+
+    const result = [];
+
+
+    for (const index of indices) {
+
+        result.push(
+            index,
+            index,
+            null
+        );
+    }
+
+
+    return result;
+}
+
+
+// ------------------------------------------------------------
+// y-coordinates used for vertical stem lines
+//
+// Example:
+//
+//   [0, value, null,
+//    0, value, null,
+//    ...]
+// ------------------------------------------------------------
+
+function stemLineY(values) {
+
+    const result = [];
+
+
+    for (const value of values) {
+
+        result.push(
+            0,
+            value,
+            null
+        );
+    }
+
+
+    return result;
+}
+
+
+// ============================================================
+// Create initial stem traces
+// ============================================================
+
+function makeStemTraces(
     indices,
     values,
     color,
     name
 ) {
 
-    const lineX = [];
-    const lineY = [];
-
-
-    for (let i = 0; i < indices.length; i++) {
-
-        lineX.push(
-            indices[i],
-            indices[i],
-            null
-        );
-
-        lineY.push(
-            0,
-            values[i],
-            null
-        );
-    }
-
-
     const stems = {
 
-        x: lineX,
-        y: lineY,
+        x: stemLineX(indices),
+
+        y: stemLineY(values),
 
         type: "scatter",
+
         mode: "lines",
 
         line: {
@@ -228,9 +263,11 @@ function makeStemTrace(
     const markers = {
 
         x: indices,
+
         y: values,
 
         type: "scatter",
+
         mode: "markers",
 
         name: name,
@@ -241,7 +278,7 @@ function makeStemTrace(
         },
 
         hovertemplate:
-            "k = %{x}<br>" +
+            "index = %{x}<br>" +
             "value = %{y:.3f}" +
             "<extra>" + name + "</extra>"
     };
@@ -254,15 +291,17 @@ function makeStemTrace(
 }
 
 
-// ------------------------------------------------------------
-// Plot configuration shared by all three plots
-// ------------------------------------------------------------
+// ============================================================
+// Plot configuration
+// ============================================================
 
 const plotConfig = {
 
     responsive: true,
 
     displaylogo: false,
+
+    scrollZoom: false,
 
     modeBarButtonsToRemove: [
         "lasso2d",
@@ -271,67 +310,35 @@ const plotConfig = {
 };
 
 
-// ------------------------------------------------------------
-// Main update function
-// ------------------------------------------------------------
+// ============================================================
+// Application state
+// ============================================================
 
-function update() {
+let x;
+let h;
+let y;
 
-    // --------------------------------------------------------
-    // Read controls
-    // --------------------------------------------------------
+let shiftedH;
+let product;
+let currentY;
 
-    const xName = xMenu.value;
-    const hName = hMenu.value;
+let signalLimit;
+let outputLimit;
 
-    const n = Number(slider.value);
-
-
-    // Display n beside the slider
-    nValue.textContent = `n = ${n}`;
+let plotsReady = false;
 
 
-    // --------------------------------------------------------
-    // Generate signals
-    // --------------------------------------------------------
+// ============================================================
+// Recalculate signals
+// ============================================================
 
-    const x = signal(xName);
-    const h = signal(hName);
+function calculateSignals() {
 
+    x = signal(xMenu.value);
+    h = signal(hMenu.value);
 
-    // Complete convolution
-    const y = convolve(x, h);
+    y = convolve(x, h);
 
-
-    // Flipped + shifted h[n-k]
-    const shiftedH = shiftedSignal(h, n);
-
-
-    // Point-by-point multiplication
-    const product = x.map(
-        (value, i) => value * shiftedH[i]
-    );
-
-
-    // Current convolution value
-    const currentY = product.reduce(
-        (sum, value) => sum + value,
-        0
-    );
-
-
-    // --------------------------------------------------------
-    // Display equation
-    // --------------------------------------------------------
-
-    equation.innerHTML =
-        `y[${n}] = Σ x[k]h[${n}−k] = ` +
-        `<strong>${currentY.toFixed(3)}</strong>`;
-
-
-    // --------------------------------------------------------
-    // Fixed axis limits
-    // --------------------------------------------------------
 
     const inputPeak = Math.max(
         maxAbs(x),
@@ -346,230 +353,272 @@ function update() {
     );
 
 
-    const signalLimit =
+    signalLimit =
         1.15 * Math.max(
             inputPeak,
             productPeak
         );
 
 
-    const outputLimit =
+    outputLimit =
         1.15 * Math.max(
             maxAbs(y),
             0.1
         );
+}
+
+
+// ============================================================
+// Recalculate only things that depend on n
+// ============================================================
+
+function calculateShift() {
+
+    const n = Number(slider.value);
+
+
+    shiftedH = shiftedSignal(
+        h,
+        n
+    );
+
+
+    product = x.map(
+        (value, i) =>
+            value * shiftedH[i]
+    );
+
+
+    currentY = product.reduce(
+        (sum, value) =>
+            sum + value,
+        0
+    );
+}
+
+
+// ============================================================
+// Text
+// ============================================================
+
+function updateText() {
+
+    const n = Number(slider.value);
+
+
+    nValue.textContent =
+        `n = ${n}`;
+
+
+    equation.innerHTML =
+        `y[${n}] = Σ x[k]h[${n}−k] = ` +
+        `<strong>${currentY.toFixed(3)}</strong>`;
+}
+
+
+// ============================================================
+// INITIAL PLOT CREATION
+//
+// This happens only ONCE.
+// ============================================================
+
+async function createPlots() {
+
+    calculateSignals();
+    calculateShift();
+    updateText();
+
+
+    const n = Number(slider.value);
 
 
     // ========================================================
-    // 1. INPUT + SHIFTED h[n-k]
+    // TOP PLOT
     // ========================================================
 
-    const xStem = makeStemTrace(
+    const xTraces = makeStemTraces(
         k,
         x,
-        "#2563eb",
+        BLUE,
         "x[k]"
     );
 
 
-    const hStem = makeStemTrace(
+    const hTraces = makeStemTraces(
         k,
         shiftedH,
-        "#ea580c",
-        `h[${n}-k]`
+        ORANGE,
+        "h[n-k]"
     );
 
 
-    const overlapData = [
-        ...xStem,
-        ...hStem
-    ];
+    await Plotly.newPlot(
 
+        overlapPlot,
 
-    const overlapLayout = {
+        [
+            ...xTraces,
+            ...hTraces
+        ],
 
-        title: {
-            text:
-                `x[k] and flipped/shifted h[${n}−k]`,
-            font: {
-                size: 18
-            }
+        {
+
+            title: {
+                text:
+                    `x[k] and flipped/shifted h[${n}−k]`
+            },
+
+            margin: {
+                l: 55,
+                r: 25,
+                t: 55,
+                b: 50
+            },
+
+            xaxis: {
+
+                title: "Discrete-time index",
+
+                range: [-20.5, 20.5],
+
+                tickmode: "linear",
+                tick0: -20,
+                dtick: 5,
+
+                zeroline: true,
+                zerolinecolor: "#000",
+                zerolinewidth: 1,
+
+                gridcolor: "#e2e8f0"
+            },
+
+            yaxis: {
+
+                range: [
+                    -signalLimit,
+                    signalLimit
+                ],
+
+                zeroline: true,
+                zerolinecolor: "#000",
+                zerolinewidth: 1,
+
+                gridcolor: "#e2e8f0"
+            },
+
+            legend: {
+
+                orientation: "h",
+
+                x: 0.5,
+                xanchor: "center",
+
+                y: 1.08,
+                yanchor: "bottom"
+            },
+
+            paper_bgcolor: "white",
+            plot_bgcolor: "white"
         },
 
-        margin: {
-            l: 55,
-            r: 25,
-            t: 55,
-            b: 50
-        },
-
-        xaxis: {
-
-            title: "Discrete-time index",
-
-            range: [-20.5, 20.5],
-
-            tickmode: "linear",
-            tick0: -20,
-            dtick: 5,
-
-            zeroline: true,
-            zerolinecolor: "#000",
-            zerolinewidth: 1,
-
-            gridcolor: "#e2e8f0"
-        },
-
-        yaxis: {
-
-            range: [
-                -signalLimit,
-                signalLimit
-            ],
-
-            zeroline: true,
-            zerolinecolor: "#000",
-            zerolinewidth: 1,
-
-            gridcolor: "#e2e8f0"
-        },
-
-        legend: {
-
-            orientation: "h",
-
-            x: 0.5,
-            xanchor: "center",
-
-            y: 1.08,
-            yanchor: "bottom"
-        },
-
-        hovermode: "closest",
-
-        paper_bgcolor: "white",
-        plot_bgcolor: "white",
-
-        uirevision: "overlap"
-    };
-
-
-    Plotly.react(
-        "overlapPlot",
-        overlapData,
-        overlapLayout,
         plotConfig
     );
 
 
     // ========================================================
-    // 2. PRODUCT x[k] h[n-k]
+    // PRODUCT PLOT
     // ========================================================
 
-    const productStem = makeStemTrace(
+    const productTraces = makeStemTraces(
         k,
         product,
-        "#7c3aed",
+        PURPLE,
         "Product"
     );
 
 
-    const productLayout = {
+    await Plotly.newPlot(
 
-        title: {
-            text:
-                `x[k]h[${n}−k] — sum = ${currentY.toFixed(3)}`,
-            font: {
-                size: 17
-            }
+        productPlot,
+
+        productTraces,
+
+        {
+
+            title: {
+                text:
+                    `x[k]h[${n}−k] — sum = ${currentY.toFixed(3)}`
+            },
+
+            margin: {
+                l: 55,
+                r: 20,
+                t: 55,
+                b: 50
+            },
+
+            xaxis: {
+
+                title: "Discrete-time index",
+
+                range: [-20.5, 20.5],
+
+                tickmode: "linear",
+                tick0: -20,
+                dtick: 5,
+
+                zeroline: true,
+                zerolinecolor: "#000",
+                zerolinewidth: 1,
+
+                gridcolor: "#e2e8f0"
+            },
+
+            yaxis: {
+
+                range: [
+                    -signalLimit,
+                    signalLimit
+                ],
+
+                zeroline: true,
+                zerolinecolor: "#000",
+                zerolinewidth: 1,
+
+                gridcolor: "#e2e8f0"
+            },
+
+            showlegend: false,
+
+            paper_bgcolor: "white",
+            plot_bgcolor: "white"
         },
 
-        margin: {
-            l: 55,
-            r: 20,
-            t: 55,
-            b: 50
-        },
-
-        xaxis: {
-
-            title: "Discrete-time index",
-
-            range: [-20.5, 20.5],
-
-            tickmode: "linear",
-            tick0: -20,
-            dtick: 5,
-
-            zeroline: true,
-            zerolinecolor: "#000",
-            zerolinewidth: 1,
-
-            gridcolor: "#e2e8f0"
-        },
-
-        yaxis: {
-
-            range: [
-                -signalLimit,
-                signalLimit
-            ],
-
-            zeroline: true,
-            zerolinecolor: "#000",
-            zerolinewidth: 1,
-
-            gridcolor: "#e2e8f0"
-        },
-
-        showlegend: false,
-
-        hovermode: "closest",
-
-        paper_bgcolor: "white",
-        plot_bgcolor: "white",
-
-        uirevision: "product"
-    };
-
-
-    Plotly.react(
-        "productPlot",
-        productStem,
-        productLayout,
         plotConfig
     );
 
 
     // ========================================================
-    // 3. COMPLETE CONVOLUTION OUTPUT
+    // OUTPUT PLOT
     // ========================================================
 
-    const outputStem = makeStemTrace(
+    const outputTraces = makeStemTraces(
         yIndices,
         y,
-        "#059669",
+        GREEN,
         "y[n]"
     );
 
 
-    // Position inside y[]
-    //
-    // y[-40] -> y[0]
-    // y[0]   -> y[40]
-    //
-    const currentOutputIndex = n + 40;
-
-    const highlightedY =
-        y[currentOutputIndex];
+    const currentOutput =
+        y[n + 40];
 
 
-    // Red highlighted current sample
     const currentPoint = {
 
         x: [n],
 
-        y: [highlightedY],
+        y: [currentOutput],
 
         type: "scatter",
 
@@ -577,7 +626,7 @@ function update() {
 
         marker: {
 
-            color: "#dc2626",
+            color: RED,
 
             size: 12,
 
@@ -587,206 +636,491 @@ function update() {
             }
         },
 
-        name: `y[${n}]`,
-
         hovertemplate:
-            `n = ${n}<br>` +
-            `y[n] = ${highlightedY.toFixed(3)}` +
-            "<extra></extra>"
+            "n = %{x}<br>" +
+            "y[n] = %{y:.3f}" +
+            "<extra></extra>",
+
+        showlegend: false
     };
 
 
-    const outputData = [
-        ...outputStem,
-        currentPoint
-    ];
+    await Plotly.newPlot(
 
+        outputPlot,
 
-    const outputLayout = {
-
-        title: {
-            text: "Complete convolution y[n]",
-            font: {
-                size: 17
-            }
-        },
-
-        margin: {
-            l: 55,
-            r: 20,
-            t: 55,
-            b: 50
-        },
-
-        xaxis: {
-
-            title: "Discrete-time index",
-
-            range: [-40.5, 40.5],
-
-            tickmode: "linear",
-            tick0: -40,
-            dtick: 10,
-
-            zeroline: true,
-            zerolinecolor: "#000",
-            zerolinewidth: 1,
-
-            gridcolor: "#e2e8f0"
-        },
-
-        yaxis: {
-
-            range: [
-                -outputLimit,
-                outputLimit
-            ],
-
-            zeroline: true,
-            zerolinecolor: "#000",
-            zerolinewidth: 1,
-
-            gridcolor: "#e2e8f0"
-        },
-
-        shapes: [
-
-            // Red vertical line marking current n
-            {
-                type: "line",
-
-                x0: n,
-                x1: n,
-
-                y0: -outputLimit,
-                y1: outputLimit,
-
-                line: {
-                    color: "#dc2626",
-                    width: 2,
-                    dash: "dash"
-                }
-            }
+        [
+            ...outputTraces,
+            currentPoint
         ],
 
-        showlegend: false,
+        {
 
-        hovermode: "closest",
+            title: {
+                text: "Complete convolution y[n]"
+            },
 
-        paper_bgcolor: "white",
-        plot_bgcolor: "white",
+            margin: {
+                l: 55,
+                r: 20,
+                t: 55,
+                b: 50
+            },
 
-        uirevision: "output"
-    };
+            xaxis: {
 
+                title: "Discrete-time index",
 
-    Plotly.react(
-        "outputPlot",
-        outputData,
-        outputLayout,
+                range: [-40.5, 40.5],
+
+                tickmode: "linear",
+                tick0: -40,
+                dtick: 10,
+
+                zeroline: true,
+                zerolinecolor: "#000",
+                zerolinewidth: 1,
+
+                gridcolor: "#e2e8f0"
+            },
+
+            yaxis: {
+
+                range: [
+                    -outputLimit,
+                    outputLimit
+                ],
+
+                zeroline: true,
+                zerolinecolor: "#000",
+                zerolinewidth: 1,
+
+                gridcolor: "#e2e8f0"
+            },
+
+            shapes: [
+
+                {
+                    type: "line",
+
+                    x0: n,
+                    x1: n,
+
+                    y0: -outputLimit,
+                    y1: outputLimit,
+
+                    line: {
+                        color: RED,
+                        width: 2,
+                        dash: "dash"
+                    }
+                }
+            ],
+
+            showlegend: false,
+
+            paper_bgcolor: "white",
+            plot_bgcolor: "white"
+        },
+
         plotConfig
+    );
+
+
+    plotsReady = true;
+}
+
+
+// ============================================================
+// FAST UPDATE WHEN ONLY n CHANGES
+//
+// IMPORTANT:
+// No Plotly.react()
+// No newPlot()
+// No rebuilding the figure.
+//
+// Only existing trace arrays are modified.
+// ============================================================
+
+function updateShift() {
+
+    if (!plotsReady) {
+        return;
+    }
+
+
+    calculateShift();
+    updateText();
+
+
+    const n = Number(slider.value);
+
+
+    // ========================================================
+    // TOP PLOT
+    //
+    // Trace indices:
+    //
+    // 0 = x stem lines
+    // 1 = x markers
+    // 2 = h stem lines
+    // 3 = h markers
+    //
+    // Only 2 and 3 need to move!
+    // ========================================================
+
+    Plotly.restyle(
+
+        overlapPlot,
+
+        {
+            y: [
+                stemLineY(shiftedH),
+                shiftedH
+            ]
+        },
+
+        [2, 3]
+    );
+
+
+    Plotly.relayout(
+
+        overlapPlot,
+
+        {
+            "title.text":
+                `x[k] and flipped/shifted h[${n}−k]`
+        }
+    );
+
+
+    // ========================================================
+    // PRODUCT PLOT
+    // ========================================================
+
+    Plotly.restyle(
+
+        productPlot,
+
+        {
+            y: [
+                stemLineY(product),
+                product
+            ]
+        },
+
+        [0, 1]
+    );
+
+
+    Plotly.relayout(
+
+        productPlot,
+
+        {
+            "title.text":
+                `x[k]h[${n}−k] — sum = ${currentY.toFixed(3)}`
+        }
+    );
+
+
+    // ========================================================
+    // OUTPUT PLOT
+    //
+    // Green convolution curve DOES NOT MOVE.
+    //
+    // Only:
+    //   red marker
+    //   red vertical line
+    //
+    // move.
+    // ========================================================
+
+    const currentOutput =
+        y[n + 40];
+
+
+    Plotly.restyle(
+
+        outputPlot,
+
+        {
+            x: [[n]],
+            y: [[currentOutput]]
+        },
+
+        [2]
+    );
+
+
+    Plotly.relayout(
+
+        outputPlot,
+
+        {
+            "shapes[0].x0": n,
+            "shapes[0].x1": n
+        }
     );
 }
 
 
 // ============================================================
-// Controls
+// FULL UPDATE WHEN x[k] OR h[k] CHANGES
 // ============================================================
 
+function updateSignals() {
 
-// ------------------------------------------------------------
+    if (!plotsReady) {
+        return;
+    }
+
+
+    calculateSignals();
+    calculateShift();
+    updateText();
+
+
+    const n = Number(slider.value);
+
+
+    // --------------------------------------------------------
+    // Update all four traces in top plot
+    // --------------------------------------------------------
+
+    Plotly.restyle(
+
+        overlapPlot,
+
+        {
+            y: [
+                stemLineY(x),
+                x,
+                stemLineY(shiftedH),
+                shiftedH
+            ]
+        },
+
+        [0, 1, 2, 3]
+    );
+
+
+    Plotly.relayout(
+
+        overlapPlot,
+
+        {
+            "title.text":
+                `x[k] and flipped/shifted h[${n}−k]`,
+
+            "yaxis.range": [
+                -signalLimit,
+                signalLimit
+            ]
+        }
+    );
+
+
+    // --------------------------------------------------------
+    // Product
+    // --------------------------------------------------------
+
+    Plotly.restyle(
+
+        productPlot,
+
+        {
+            y: [
+                stemLineY(product),
+                product
+            ]
+        },
+
+        [0, 1]
+    );
+
+
+    Plotly.relayout(
+
+        productPlot,
+
+        {
+            "title.text":
+                `x[k]h[${n}−k] — sum = ${currentY.toFixed(3)}`,
+
+            "yaxis.range": [
+                -signalLimit,
+                signalLimit
+            ]
+        }
+    );
+
+
+    // --------------------------------------------------------
+    // Entire convolution has changed
+    // --------------------------------------------------------
+
+    Plotly.restyle(
+
+        outputPlot,
+
+        {
+            y: [
+                stemLineY(y),
+                y
+            ]
+        },
+
+        [0, 1]
+    );
+
+
+    const currentOutput =
+        y[n + 40];
+
+
+    Plotly.restyle(
+
+        outputPlot,
+
+        {
+            x: [[n]],
+            y: [[currentOutput]]
+        },
+
+        [2]
+    );
+
+
+    Plotly.relayout(
+
+        outputPlot,
+
+        {
+            "yaxis.range": [
+                -outputLimit,
+                outputLimit
+            ],
+
+            "shapes[0].x0": n,
+            "shapes[0].x1": n,
+
+            "shapes[0].y0": -outputLimit,
+            "shapes[0].y1": outputLimit
+        }
+    );
+}
+
+
+// ============================================================
+// requestAnimationFrame throttling
+//
+// If the slider fires 50 input events very quickly,
+// render at most once per browser frame.
+// ============================================================
+
+let frameRequested = false;
+
+
+function scheduleShiftUpdate() {
+
+    if (frameRequested) {
+        return;
+    }
+
+
+    frameRequested = true;
+
+
+    requestAnimationFrame(() => {
+
+        updateShift();
+
+        frameRequested = false;
+
+    });
+}
+
+
+// ============================================================
 // Slider
-// ------------------------------------------------------------
+// ============================================================
 
 slider.addEventListener(
     "input",
-    update
+    scheduleShiftUpdate
 );
 
 
-// ------------------------------------------------------------
-// Signal dropdowns
-// ------------------------------------------------------------
+// ============================================================
+// Dropdowns
+// ============================================================
 
 xMenu.addEventListener(
     "change",
-    update
+    updateSignals
 );
 
 
 hMenu.addEventListener(
     "change",
-    update
+    updateSignals
 );
 
 
-// ------------------------------------------------------------
+// ============================================================
 // Minus button
-// ------------------------------------------------------------
+// ============================================================
 
 minusButton.addEventListener(
     "click",
     () => {
 
-        const minimum =
-            Number(slider.min);
+        slider.value = Math.max(
 
-        const current =
-            Number(slider.value);
+            Number(slider.min),
 
-
-        slider.value =
-            Math.max(
-                minimum,
-                current - 1
-            );
+            Number(slider.value) - 1
+        );
 
 
-        update();
+        scheduleShiftUpdate();
     }
 );
 
 
-// ------------------------------------------------------------
+// ============================================================
 // Plus button
-// ------------------------------------------------------------
+// ============================================================
 
 plusButton.addEventListener(
     "click",
     () => {
 
-        const maximum =
-            Number(slider.max);
+        slider.value = Math.min(
 
-        const current =
-            Number(slider.value);
+            Number(slider.max),
 
-
-        slider.value =
-            Math.min(
-                maximum,
-                current + 1
-            );
+            Number(slider.value) + 1
+        );
 
 
-        update();
+        scheduleShiftUpdate();
     }
 );
 
 
 // ============================================================
 // Keyboard controls
-//
-// Left arrow  -> n - 1
-// Right arrow -> n + 1
 // ============================================================
 
 document.addEventListener(
     "keydown",
     event => {
 
-        // Don't interfere if user is interacting
-        // with a dropdown.
+        // Don't hijack keyboard navigation
+        // while using dropdown menus.
         if (
             document.activeElement.tagName === "SELECT"
         ) {
@@ -796,39 +1130,42 @@ document.addEventListener(
 
         if (event.key === "ArrowLeft") {
 
-            const minimum =
-                Number(slider.min);
+            event.preventDefault();
 
-            slider.value =
-                Math.max(
-                    minimum,
-                    Number(slider.value) - 1
-                );
 
-            update();
+            slider.value = Math.max(
+
+                Number(slider.min),
+
+                Number(slider.value) - 1
+            );
+
+
+            scheduleShiftUpdate();
         }
 
 
         if (event.key === "ArrowRight") {
 
-            const maximum =
-                Number(slider.max);
+            event.preventDefault();
 
-            slider.value =
-                Math.min(
-                    maximum,
-                    Number(slider.value) + 1
-                );
 
-            update();
+            slider.value = Math.min(
+
+                Number(slider.max),
+
+                Number(slider.value) + 1
+            );
+
+
+            scheduleShiftUpdate();
         }
-
     }
 );
 
 
 // ============================================================
-// Initial render
+// Start application
 // ============================================================
 
-update();
+createPlots();
