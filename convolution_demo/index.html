@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Discrete Convolution Demo</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdn.plot.ly/plotly-4.0.0.min.js"></script>
+</head>
+
+<body>
+
+    <main class="container">
+
+        <h1>Discrete-Time Convolution</h1>
+
+        <div class="controls">
+
+            <label>
+                x[k]
+                <select id="xSignal">
+                    <option>Impulse</option>
+                    <option>Step</option>
+                    <option selected>Rectangle</option>
+                    <option>Exponential</option>
+                    <option>Sine</option>
+                </select>
+            </label>
+
+            <label>
+                h[k]
+                <select id="hSignal">
+                    <option>Impulse</option>
+                    <option>Step</option>
+                    <option>Rectangle</option>
+                    <option selected>Exponential</option>
+                    <option>Sine</option>
+                </select>
+            </label>
+
+        </div>
+
+
+        <div class="shift-controls">
+
+            <button id="minus">−</button>
+
+            <span id="nValue">n = -10</span>
+
+            <input
+                id="nSlider"
+                type="range"
+                min="-10"
+                max="10"
+                step="1"
+                value="-10"
+            >
+
+            <button id="plus">+</button>
+
+        </div>
+
+
+        <div id="equation"></div>
+
+
+        <div id="overlapPlot" class="plot"></div>
+
+
+        <div class="bottom-plots">
+
+            <div id="productPlot" class="plot"></div>
+
+            <div id="outputPlot" class="plot"></div>
+
+        </div>
+
+    </main>
+
+    <script src="app.js"></script>
+
+</body>
+</html>
