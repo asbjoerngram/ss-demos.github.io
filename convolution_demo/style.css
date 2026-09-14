@@ -1,0 +1,90 @@
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.container {
+    max-width: 1100px;
+    margin: auto;
+    padding: 24px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-bottom: 16px;
+}
+
+.controls label {
+    font-weight: 600;
+}
+
+select {
+    margin-left: 8px;
+    padding: 6px 10px;
+}
+
+.shift-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+}
+
+.shift-controls button {
+    width: 40px;
+    height: 40px;
+
+    font-size: 22px;
+
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+
+    background: white;
+    cursor: pointer;
+}
+
+#nSlider {
+    width: 350px;
+}
+
+#nValue {
+    min-width: 60px;
+    font-weight: 600;
+}
+
+#equation {
+    text-align: center;
+    font-size: 22px;
+    margin: 10px;
+}
+
+.plot {
+    width: 100%;
+}
+
+.bottom-plots {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 800px) {
+
+    .bottom-plots {
+        grid-template-columns: 1fr;
+    }
+
+    #nSlider {
+        width: 220px;
+    }
+}
